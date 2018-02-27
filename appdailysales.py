@@ -55,8 +55,8 @@
 
 # -- Change the following to match your credentials --
 # -- or use the command line options.               --
-appleId = 'Your Apple Id'
-password = 'Your Password'
+appleId = 'appleid'
+password = 'password'
 outputDirectory = ''
 unzipFile = False
 verbose = False
@@ -70,15 +70,14 @@ debug = False
 
 
 import urllib
-import urllib2
-import cookielib
+import http.cookiejar as cookielib
 import datetime
 import re
 import getopt
 import sys
 import os
 import gzip
-import StringIO
+from io import StringIO
 import traceback
 import getpass
 
@@ -130,11 +129,11 @@ class ReportOptions:
         elif attrname == 'debug':
             return debug
         else:
-            raise AttributeError, attrname
+            raise AttributeError(attrname)
 
 
 def usage():
-    print '''usage: %s [options]
+    print ('''usage: %s [options]
 Options and arguments:
 -h     : print this help message and exit (also --help)
 -a uid : your apple id (also --appleId)
@@ -148,7 +147,7 @@ Options and arguments:
 -f format : output file name format (see strftime; also --format)
 -n      : used with -f, skips downloading of report files that already exist (also --noOverWriteFiles)
 --proxy : URL of the proxy
---debug : debug output, default is off''' % sys.argv[0]
+--debug : debug output, default is off''' % sys.argv[0])
 
 
 def processCmdArgs():
@@ -168,9 +167,9 @@ def processCmdArgs():
     # override the globals set above if present.
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'ha:p:Po:uvd:D:f:n', ['help', 'appleId=', 'password=', 'passwordStdin', 'outputDirectory=', 'unzip', 'verbose', 'days=', 'date=', 'format=', 'noOverWriteFiles', 'proxy=', 'debug'])
-    except getopt.GetoptError, err:
+    except getopt.GetoptError as err:
         #print help information and exit
-        print str(err)  # will print something like "option -x not recongized"
+        print(str(err))  # will print something like "option -x not recongized"
         usage()
         return 2
 
@@ -225,11 +224,11 @@ class MyCookieJar(cookielib.CookieJar):
 
 def showCookies(cj):
     for index, cookie in enumerate(cj):
-        print index, ' : ', cookie
+        print(index, ' : ', cookie)
 
 
 def readHtml(opener, url, data=None, options=None):
-    request = urllib2.Request(url, data)
+    request = urllib.request.Request(url, data)
     urlHandle = opener.open(request)
     html = urlHandle.read()
     if options and options.debug:
@@ -243,7 +242,7 @@ def readHtml(opener, url, data=None, options=None):
 
 def downloadFile(options):
     if options.verbose == True:
-        print '-- begin script --'
+        print('-- begin script --')
 
     if (options.outputDirectory != '' and not os.path.exists(options.outputDirectory)):
         os.makedirs(options.outputDirectory)
@@ -252,16 +251,16 @@ def downloadFile(options):
 
     handlers = []                      # proxy support
     if options.proxy:                  # proxy support
-        handlers.append(urllib2.ProxyHandler({"https": options.proxy}))      # proxy support
+        handlers.append(urllib.request.ProxyHandler({"https": options.proxy}))      # proxy support
 
     cj = MyCookieJar();
     cj.set_policy(cookielib.DefaultCookiePolicy(rfc2965=True))
-    cjhdr = urllib2.HTTPCookieProcessor(cj)
+    cjhdr = urllib.request.HTTPCookieProcessor(cj)
     handlers.append(cjhdr)             # proxy support
-    opener = urllib2.build_opener(*handlers)        # proxy support
+    opener = urllib.request.build_opener(*handlers)        # proxy support
 
     if options.verbose == True:
-        print 'Signing into iTunes Connect web site.'
+        print('Signing into iTunes Connect web site.')
 
     # Go to the iTunes Connect website and retrieve the
     # form action for logging into the site.
@@ -280,11 +279,11 @@ def downloadFile(options):
     webFormLoginData = urllib.urlencode({'theAccountName':options.appleId, 'theAccountPW':options.password, '1.Continue':'0'})
     html = readHtml(opener, urlActionLogin, webFormLoginData, options=options)
     if (html.find('Your Apple ID or password was entered incorrectly.') != -1):
-        raise ITCException, 'User or password incorrect.'
+        raise ITCException('User or password incorrect.')
 
     # Find the Sales and Trends URL.
     if options.verbose == True:
-        print 'Accessing Sales and Trends reporting web site.'
+        print('Accessing Sales and Trends reporting web site.')
 
     # Sometimes the vendor default page does not load right away.
     # This causes the script to fail, so as a work around, the
@@ -304,18 +303,18 @@ def downloadFile(options):
             defaultVendorPage = match[0]
             ajaxName = re.sub('_2', '_0', defaultVendorPage)
             if options.debug == True:
-                print 'viewState: ', viewState
-                print 'defaultVendorPage: ', defaultVendorPage
-                print 'ajaxName: ', ajaxName
+                print('viewState: ', viewState)
+                print('defaultVendorPage: ', defaultVendorPage)
+                print('ajaxName: ', ajaxName)
             vendorDefaultPageAttempts = 0 # exit loop
         except:
             if vendorDefaultPageAttempts < 1:
                 errMessage = 'Unable to load default vendor page.'
                 if options.verbose == True:
-                    print errMessage
+                    print(errMessage)
                     raise
                 else:
-                    raise ITCException, errMessage
+                    raise ITCException(errMessage)
 
     # This may seem confusing because we just accessed the vendor default page in the
     # code above. However, the vendor default page as a piece of javascript that runs
@@ -336,14 +335,14 @@ def downloadFile(options):
         match = re.findall('(?s)<td>(.*?)</td>', notificationDiv)
         notificationMessage = match[0]
         if options.verbose == True:
-            print notificationMessage
+            print(notificationMessage)
     except:
         pass # Do nothing. We're just checking for notifications.
 
 
     # Access the sales report page.
     if options.verbose == True:
-        print 'Accessing sales report web page.'
+        print('Accessing sales report web page.')
     urlSalesReport = 'https://reportingitc.apple.com/sales.faces'
     html = readHtml(opener, urlSalesReport, options=options)
 
@@ -358,18 +357,18 @@ def downloadFile(options):
         dateName = dailyName.replace('_51', '_8')
         selectName = dailyName.replace('_51', '_29')
         if options.debug == True:
-            print 'viewState: ', viewState
-            print 'dailyName: ', dailyName
-            print 'ajaxName: ', ajaxName
-            print 'dateName: ', dateName
-            print 'selectName:', selectName
+            print('viewState: ', viewState  )
+            print('dailyName: ', dailyName)
+            print('ajaxName: ', ajaxName)
+            print('dateName: ', dateName)
+            print('selectName:', selectName)
     except:
         errMessage = 'Unable to load the sales report web page at this time. A number of reasons can cause this including delayed reporting, unsigned contracts, and change to the web site breaking this script. Try again later or sign into iTunes Connect and verify access.'
         if options.verbose == True:
-            print errMessage
+            print(errMessage)
             raise
         else:
-            raise ITCException, errMessage
+            raise ITCException(errMessage)
 
 
     # Get the list of available dates.
@@ -379,15 +378,15 @@ def downloadFile(options):
         dateListAvailableDays = re.findall('<option value="(.*?)"', match[0])
         dateListAvailableWeeks = re.findall('<option value="(.*?)"', match[1])
         if options.debug == True:
-            print 'dateListAvailableDays: ', dateListAvailableDays
-            print 'dateListAvailableWeeks: ', dateListAvailableWeeks
+            print('dateListAvailableDays: ', dateListAvailableDays)
+            print('dateListAvailableWeeks: ', dateListAvailableWeeks)
     except:
         errMessage = 'Unable to retrieve the list of available dates.'
         if options.verbose == True:
-            print errMessage
+            print(errMessage)
             raise
         else:
-            raise ITCException, errMessage
+            raise ITCException(errMessage)
 
 
     # Click through from the dashboard to the sales page.
@@ -410,12 +409,12 @@ def downloadFile(options):
         reportDates = [datetime.datetime.strptime(options.dateToDownload, '%m/%d/%Y').date()]
 
     if options.debug == True:
-        print 'reportDates: ', reportDates
+        print('reportDates: ', reportDates)
 
 
     ####
     if options.verbose == True:
-        print 'Downloading daily sales reports.'
+        print('Downloading daily sales reports.')
     unavailableCount = 0
     filenames = []
     for downloadReportDate in reportDates:
@@ -433,11 +432,11 @@ def downloadFile(options):
                         filename = os.path.splitext( filename )[0]
                     if (os.path.exists(filename)):
                         if options.verbose == True:
-                            print 'Report file', filename, 'exists, skipping.'
+                            print('Report file', filename, 'exists, skipping.')
                         continue
 
             if options.verbose == True:
-                print 'Downloading report for: ', dateString
+                print('Downloading report for: ', dateString)
             webFormSalesReportData = urllib.urlencode({'AJAXREQUEST':ajaxName, 'theForm':'theForm', 'theForm:xyz':'notnormal', 'theForm:vendorType':'Y', 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:datePickerSourceSelectElementSales':dateString, 'theForm:weekPickerSourceSelectElement':dateListAvailableWeeks[0], 'javax.faces.ViewState':viewState, selectName:selectName})
             html = readHtml(opener, urlSalesReport, webFormSalesReportData)
             match = re.findall('"javax.faces.ViewState" value="(.*?)"', html)
@@ -449,7 +448,7 @@ def downloadFile(options):
             urlHandle = opener.open(request)
             try:
                 if options.debug == True:
-                    print urlHandle.info()
+                    print(urlHandle.info())
 
                 # Check for the content-disposition. If present then we know we have a
                 # file to download. If not present then an AttributeError exception is
@@ -465,7 +464,7 @@ def downloadFile(options):
 
                 if options.unzipFile == True:
                     if options.verbose == True:
-                        print 'Unzipping archive file: ', filename
+                        print('Unzipping archive file: ', filename)
                     #Use GzipFile to de-gzip the data
                     ioBuffer = StringIO.StringIO( filebuffer )
                     gzipIO = gzip.GzipFile( 'rb', fileobj=ioBuffer )
@@ -480,11 +479,11 @@ def downloadFile(options):
                     fileDirectory = os.path.dirname(filename)
                     if (os.path.exists(fileDirectory) == False):
                         if options.verbose == True:
-                            print 'Directory', fileDirectory, 'doesn\'t exist, creating.'
+                            print('Directory', fileDirectory, 'doesn\'t exist, creating.')
                         os.makedirs(fileDirectory)
 
                 if options.verbose == True:
-                    print 'Saving download file:', filename
+                    print('Saving download file:', filename)
 
                 downloadFile = open(filename, 'w')
                 downloadFile.write(filebuffer)
@@ -492,21 +491,21 @@ def downloadFile(options):
 
                 filenames.append( filename )
             except AttributeError:
-                print '%s report is not available - try again later.' % dateString
+                print('%s report is not available - try again later.' % dateString)
                 unavailableCount += 1
         else:
-            print '%s report is not available - try again later.' % dateString
+            print('%s report is not available - try again later.' % dateString)
             unavailableCount += 1
     # End for downloadReportDate in reportDates:
     ####
 
     if unavailableCount > 0:
-        raise ITCException, '%i report(s) not available - try again later' % unavailableCount
+        raise ITCException('%i report(s) not available - try again later' % unavailableCount)
 
     if options.debug == True:
         os.remove(os.path.join(options.outputDirectory, "temp.html"))
     if options.verbose == True:
-        print '-- end of script --'
+        print('-- end of script --')
 
     return filenames
 
@@ -532,8 +531,8 @@ def main():
     # Download the file.
     try:
         downloadFile(options)
-    except ITCException, e:
-        print e.value
+    except ITCException as e:
+        print (e.value)
         return 1
 
 
