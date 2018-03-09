@@ -205,6 +205,7 @@ def processCmdArgs():
         else:
             assert False, 'unhandled option'
 
+    return 0
 
 # There is an issue with Python 2.5 where it assumes the 'version'
 # cookie value is always interger.  However, itunesconnect.apple.com
@@ -230,7 +231,7 @@ def showCookies(cj):
 def readHtml(opener, url, data=None, options=None):
     request = urllib.request.Request(url, data)
     urlHandle = opener.open(request)
-    html = urlHandle.read()
+    html = urlHandle.read().decode("utf-8")
     if options and options.debug:
         f = open(os.path.join(options.outputDirectory, 'temp.html'), 'w')
         try:
@@ -247,7 +248,7 @@ def downloadFile(options):
     if (options.outputDirectory != '' and not os.path.exists(options.outputDirectory)):
         os.makedirs(options.outputDirectory)
 
-    urlITCBase = 'https://itunesconnect.apple.com%s'
+    urlITCBase = 'https://itunesconnect.apple.com{}'
 
     handlers = []                      # proxy support
     if options.proxy:                  # proxy support
@@ -264,7 +265,7 @@ def downloadFile(options):
 
     # Go to the iTunes Connect website and retrieve the
     # form action for logging into the site.
-    urlWebsite = urlITCBase % '/WebObjects/iTunesConnect.woa'
+    urlWebsite = urlITCBase.format('/WebObjects/iTunesConnect.woa')
     html = readHtml(opener, urlWebsite, options=options)
     match = re.search('" action="(.*)"', html)
     urlActionLogin = urlITCBase % match.group(1)
@@ -511,7 +512,10 @@ def downloadFile(options):
 
 
 def main():
-    if processCmdArgs() > 0:    # Will exit if usgae requested or invalid argument found.
+    cmdArgParseResult = processCmdArgs()
+    print("cmdArgParseResult={}".format(cmdArgParseResult))
+
+    if cmdArgParseResult > 0:    # Will exit if usgae requested or invalid argument found.
       return 2
 
     # Set report options.
